@@ -188,7 +188,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
- "console",
  "indicatif",
  "num-bigint",
  "num-traits",

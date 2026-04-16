@@ -1,4 +1,5 @@
 pub mod fibonacci;
+pub mod interfaz_consola;
 
 /// Re-exportación de las API principales para facilitar su uso desde el binario.
 pub use fibonacci::{
