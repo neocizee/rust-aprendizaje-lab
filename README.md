@@ -15,8 +15,19 @@ Este proyecto utiliza las siguientes tecnologías y dependencias:
 
 - **Lenguaje**: Rust (Edición 2024)
 - **num-bigint (v0.4)**: Para cálculos con números enteros de tamaño arbitrario.
-- **num-traits (v0.2)**: Rasgos numéricos genéricos para extender la funcionalidad de tipos numéricos.
-- **sysinfo (v0.30)**: Para la captura de métricas del sistema y procesos (RAM y CPU).
+- **num-traits (v0.2)**: Rasgos numéricos genéricos.
+- **sysinfo (v0.30)**: Monitorización de RAM.
+- **clap (v4.4)**: Para gestión de flags de CPU y RAM.
+- **rayon (v1.10)**: Para control de hilos de CPU.
+
+## Ejecución con Límites de Recursos
+El sistema ahora opera con **límites de seguridad hardcodeados por defecto** (2 núcleos CPU / 2048 MB RAM) para evitar bloqueos del sistema. Puedes sobrescribir estos valores usando las flags:
+
+### Comando de ejemplo (Sobrescribiendo a 1 núcleo y 4GB de RAM):
+```bash
+cargo run -- --cpu 1 --ram 4096
+```
+*(Nota: Si no se pasan argumentos, el programa se limitará automáticamente a los valores seguros por defecto).*
 
 ## Documentación Detallada
 Para más detalles sobre implementaciones específicas, consulta el directorio `docs/`:

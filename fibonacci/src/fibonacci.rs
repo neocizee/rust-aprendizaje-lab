@@ -46,9 +46,12 @@ pub fn fibonacci_log_n(n: u64) -> BigInt {
     duplicacion_rapida(n).0
 }
 
-/// Genera una secuencia de Fibonacci hasta 'cantidad' y la guarda en un archivo.
-/// Realiza un seguimiento del tiempo y la memoria consumida.
-pub fn generar_archivo_fibonacci(cantidad: u64) -> io::Result<(String, EstadisticasEjecucion)> {
+/// Genera una secuencia de Fibonacci con la opción de limitar la RAM.
+pub fn generar_archivo_fibonacci(
+    cantidad: u64, 
+    limite_ram_mb: Option<u64>,
+    mostrar_progreso: bool
+) -> io::Result<(String, EstadisticasEjecucion)> {
     let dir_temporal = Path::new("temp");
     if !dir_temporal.exists() {
         fs::create_dir_all(dir_temporal)?;
@@ -68,6 +71,16 @@ pub fn generar_archivo_fibonacci(cantidad: u64) -> io::Result<(String, Estadisti
 
     let mut a: BigInt = Zero::zero();
     let mut b: BigInt = One::one();
+
+    let mut memoria_acumulada_kb: u64 = 0;
+    let mut muestras_memoria: u64 = 0;
+    let mut memoria_pico_kb: u64 = 0;
+
+    let monitor = if mostrar_progreso {
+        Some(MonitorConsola::nuevo(cantidad))
+    } else {
+        None
+    };
 
     for i in 0..cantidad {
         if i > 0 {
@@ -117,7 +130,6 @@ fn obtener_siguiente_id(directorio: &Path) -> u32 {
     siguiente_id
 }
 
-/// Crea un log de rendimiento en el directorio 'logs/'.
 fn registrar_ejecucion(id: u32, n: u64, estadisticas: &EstadisticasEjecucion) -> io::Result<()> {
     let dir_logs = Path::new("logs");
     if !dir_logs.exists() {
@@ -129,12 +141,12 @@ fn registrar_ejecucion(id: u32, n: u64, estadisticas: &EstadisticasEjecucion) ->
     writeln!(archivo_log, "--- Reporte de Ejecución (ID: {}) ---", id)?;
     writeln!(archivo_log, "Elementos Generados: {}", n)?;
     writeln!(archivo_log, "Tiempo Transcurrido: {} ms ({:.3} s)", estadisticas.tiempo_ms, estadisticas.tiempo_s)?;
-    writeln!(archivo_log, "Uso de Memoria RAM: {:.2} MB", estadisticas.memoria_usada_kb as f64 / 1024.0)?;
+    writeln!(archivo_log, "Uso de Memoria RAM (Pico): {:.2} MB", estadisticas.memoria_pico_kb as f64 / 1024.0)?;
+    writeln!(archivo_log, "Uso de Memoria RAM (Promedio): {:.2} MB", estadisticas.memoria_promedio_kb as f64 / 1024.0)?;
     
     Ok(())
 }
 
-/// Recupera un resumen de todos los reportes de ejecución almacenados.
 pub fn obtener_resumen_reportes() -> Vec<String> {
     let dir_temporal = Path::new("temp");
     let mut resumen = Vec::new();

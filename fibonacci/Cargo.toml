@@ -8,4 +8,7 @@ num-bigint = "0.4"
 num-traits = "0.2"
 sysinfo = "0.30"
 colored = "2.1"
-# Agregué 'colored' para darle un toque premium a la terminal
+clap = { version = "4.4", features = ["derive"] }
+rayon = "1.10"
+indicatif = "0.17"
+console = "0.15"

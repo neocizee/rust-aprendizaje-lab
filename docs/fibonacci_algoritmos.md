@@ -28,3 +28,9 @@ Cada vez que se genera un archivo, se llama a `registrar_ejecucion`. Esta funci�
 ## 4. Gestión de Reportes
 - `obtener_resumen_reportes`: Escanea el directorio `logs/` y extrae la información de cada cálculo previo para mostrar un historial al usuario.
 - `eliminar_archivo_fibonacci`: Limpia tanto el archivo de resultados en `temp/` como su reporte correspondiente en `logs/`.
+
+## 5. Control Técnico de Recursos (Flags)
+El programa permite restringir el uso de hardware mediante argumentos de arranque:
+
+- **CPU (`--cpu <N>`)**: Utiliza `rayon` para configurar el pool de hilos global. Si se establece en 1, todas las operaciones internas se forzarán a ejecutarse de forma secuencial en un único hilo.
+- **RAM (`--ram <MB>`)**: El motor de generación verifica el uso de memoria cada 100 elementos procesados. Si el proceso de Rust supera el umbral definido, la ejecución se aborta inmediatamente para proteger la estabilidad del sistema, devolviendo un error de "Recursos Excedidos".
