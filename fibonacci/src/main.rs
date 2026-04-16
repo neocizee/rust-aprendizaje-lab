@@ -4,20 +4,46 @@ use std::fs;
 use std::path::Path;
 use num_traits::{Zero, One};
 use colored::*;
+use clap::Parser;
+
+/// Aplicación de Laboratorio Fibonacci con gestión estricta de recursos.
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Número de núcleos de CPU a utilizar (Hilos de Rayon). Por defecto se limita a 2 para seguridad.
+    #[arg(short, long, default_value_t = 2)]
+    cpu: usize,
+
+    /// Límite máximo de RAM en Megabytes (MB). Por defecto se limita a 2048 MB (2GB).
+    #[arg(short, long, default_value_t = 2048)]
+    ram: u64,
+}
 
 fn main() {
+    let args = Args::parse();
+
+    // Configuración MANDATORIA del límite de CPU
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(args.cpu)
+        .build_global()
+        .unwrap_or_else(|_| eprintln!("{}", "Aviso: El pool de hilos ya estaba configurado.".yellow()));
+
     println!("{}", "\n  ╔══════════════════════════════════════════╗".cyan());
-    println!("{}", "  ║       LABORATORIO DE FIBONACCI V2.0      ║".cyan().bold());
+    println!("{}", "  ║       LABORATORIO DE FIBONACCI V2.2      ║".cyan().bold());
     println!("{}", "  ╚══════════════════════════════════════════╝".cyan());
+    
+    println!("  ⚙️  Límite de CPU SEGURO: {} núcleos", args.cpu.to_string().green().bold());
+    println!("  💾 Límite de RAM SEGURO: {} MB", args.ram.to_string().green().bold());
+    println!("{}", "  (Límites aplicados por defecto para proteger el sistema)".bright_black().italic());
 
     loop {
         mostrar_estado_almacenamiento();
         
         println!("\n{}", "--- MENÚ DE OPERACIONES ---".yellow().bold());
-        println!("1. {} Generar nueva secuencia (+ Log Recursos)", "✨".green());
+        println!("1. {} Generar nueva secuencia", "✨".green());
         println!("2. {} Eliminar un resultado", "🗑️".red());
-        println!("3. {} Vista previa rápida en consola", "🖥️".blue());
-        println!("4. {} Ver análisis histórico de reportes", "📋".magenta());
+        println!("3. {} Vista previa rápida", "🖥️".blue());
+        println!("4. {} Ver historial técnico", "📋".magenta());
         println!("5. {} Salir", "🚪".white());
         print!("\n{} ", "Selección >".bold().cyan());
         io::stdout().flush().unwrap();
@@ -27,94 +53,88 @@ fn main() {
         let seleccion = seleccion.trim();
 
         match seleccion {
-            "1" => operacion_generar(),
+            "1" => operacion_generar(Some(args.ram)),
             "2" => operacion_eliminar(),
             "3" => operacion_vista_previa(),
             "4" => operacion_historial(),
             "5" => {
-                println!("{}", "¡Gracias por usar el laboratorio! Saliendo...".green().italic());
+                println!("{}", "¡Saliendo del sistema seguro!".green());
                 break;
             }
-            _ => println!("{}", "Opción no válida. Intente de nuevo.".red()),
+            _ => println!("{}", "Opción inválida.".red()),
         }
     }
 }
 
-fn operacion_generar() {
+fn operacion_generar(limite_ram: Option<u64>) {
     print!("{}", "Cantidad de números a generar: ".bold());
     io::stdout().flush().unwrap();
     let mut n_str = String::new();
     io::stdin().read_line(&mut n_str).unwrap();
     
     if let Ok(n) = n_str.trim().parse::<u64>() {
-        match generar_archivo_fibonacci(n) {
-            Ok((nombre, stats)) => {
-                println!("\n{}", "✅ OPERACIÓN EXITOSA".green().bold());
-                println!("📂 Archivo: {}", nombre.bright_white());
-                println!("⏱️  Tiempo: {} ms ({:.3} s)", stats.tiempo_ms, stats.tiempo_s);
-                println!("💾 RAM: {:.2} MB", stats.memoria_usada_kb as f64 / 1024.0);
+        println!("\n{}", "🚀 Iniciando proceso de generación segura...".cyan());
+        match generar_archivo_fibonacci(n, limite_ram, true) {
+            Ok((nombre, _stats)) => {
+                println!("\n{}", "✨ El archivo ha sido guardado exitosamente.".green());
+                println!("📂 Ubicación: {}", format!("temp/{}", nombre).bright_white());
             },
-            Err(e) => eprintln!("{} {}", "ERROR:".red().bold(), e),
+            Err(e) => {
+                eprintln!("\n{}", "❌ ERROR CRÍTICO DURANTE LA GENERACIÓN".red().bold());
+                eprintln!("{} {}", "Detalle:".red(), e);
+            }
         }
     } else {
-        println!("{}", "Error de formato: Ingrese un número entero positivo.".red());
+        println!("{}", "Error: Ingrese un número válido.".red());
     }
 }
 
 fn operacion_eliminar() {
-    print!("{}", "ID o nombre del archivo a eliminar: ".bold());
+    print!("{}", "ID de archivo a eliminar: ".bold());
     io::stdout().flush().unwrap();
     let mut id_str = String::new();
     io::stdin().read_line(&mut id_str).unwrap();
     let id = id_str.trim();
     
-    match eliminar_archivo_fibonacci(id) {
-        Ok(_) => println!("{}", "Archivo eliminado (si no existía, no se realizó acción).".blue()),
-        Err(e) => eprintln!("{} {}", "Error al intentar eliminar:".red(), e),
+    if let Ok(_) = eliminar_archivo_fibonacci(id) {
+        println!("{}", "Limpieza realizada.".blue());
     }
 }
 
 fn operacion_vista_previa() {
-    print!("{}", "Longitud de la secuencia a mostrar: ".bold());
+    print!("{}", "Longitud (máx 50): ".bold());
     io::stdout().flush().unwrap();
     let mut n_str = String::new();
     io::stdin().read_line(&mut n_str).unwrap();
     
     if let Ok(n) = n_str.trim().parse::<u64>() {
-        mostrar_secuencia_consola(n);
-    } else {
-        println!("{}", "Entrada no válida.".red());
+        let n_limitado = if n > 50 { 50 } else { n };
+        
+        let mut a: num_bigint::BigInt = Zero::zero();
+        let mut b: num_bigint::BigInt = One::one();
+        
+        print!("{}", "Secuencia: ".yellow());
+        for i in 0..n_limitado {
+            if i > 0 { print!(", "); }
+            print!("{}", a);
+            let siguiente = &a + &b;
+            a = std::mem::replace(&mut b, siguiente);
+        }
+        if n > 50 { print!("{}", " ... (truncado)".bright_black()); }
+        println!();
     }
 }
 
 fn operacion_historial() {
-    println!("\n{}", "--- HISTORIAL DE RENDIMIENTO ---".magenta().bold());
+    println!("\n{}", "--- REPORTE TÉCNICO DE EJECUCIONES ---".magenta().bold());
     let reportes = obtener_resumen_reportes();
     if reportes.is_empty() {
-        println!("{}", "No hay reportes previos.".italic().white());
+        println!("{}", "No se encontraron registros.".italic());
     } else {
         for (i, r) in reportes.iter().enumerate() {
             println!("{}. {}", i + 1, r);
         }
     }
-}
-
-fn mostrar_secuencia_consola(cantidad: u64) {
-    let mut a: num_bigint::BigInt = Zero::zero();
-    let mut b: num_bigint::BigInt = One::one();
-    
-    print!("{}", "Secuencia: ".yellow());
-    for i in 0..cantidad {
-        if i > 0 { print!(", "); }
-        print!("{}", a);
-        if i > 50 && cantidad > 60 { // Limite menor para no inundar la terminal
-            print!("{}", " ... (truncado por legibilidad)".italic().bright_black());
-            break;
-        }
-        let siguiente = &a + &b;
-        a = std::mem::replace(&mut b, siguiente);
-    }
-    println!();
 }
 
 fn mostrar_estado_almacenamiento() {
@@ -130,7 +150,9 @@ fn mostrar_estado_almacenamiento() {
                 }
             }
         }
-        if vacio { println!("  {}", "(Directorio vacío)".bright_black()); }
+        if vacio {
+            println!("  {}", "(Directorio vacío)".bright_black());
+        }
     } else {
         println!("  {}", "(Carpeta temporal aún no creada)".bright_black());
     }
